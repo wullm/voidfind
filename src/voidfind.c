@@ -70,25 +70,25 @@ int main(int argc, char *argv[]) {
     fft_apply_kernel(fgrad_y, fbox, N, boxlen, kernel_dy, NULL);
     fft_apply_kernel(fgrad_z, fbox, N, boxlen, kernel_dz, NULL);
 
-    // /* Compute the inverse Fourier transform of the gradient and Hessian */
-    // double *grad_x = malloc(N*N*N*sizeof(double));
-    // double *grad_y = malloc(N*N*N*sizeof(double));
-    // double *grad_z = malloc(N*N*N*sizeof(double));
-    // fftw_plan c2r_x = fftw_plan_dft_c2r_3d(N, N, N, fgrad_x, grad_x, FFTW_ESTIMATE);
-    // fftw_plan c2r_y = fftw_plan_dft_c2r_3d(N, N, N, fgrad_y, grad_y, FFTW_ESTIMATE);
-    // fftw_plan c2r_z = fftw_plan_dft_c2r_3d(N, N, N, fgrad_z, grad_z, FFTW_ESTIMATE);
-    // fft_execute(c2r_x);
-    // fft_execute(c2r_y);
-    // fft_execute(c2r_z);
-    // fftw_destroy_plan(c2r_x);
-    // fftw_destroy_plan(c2r_y);
-    // fftw_destroy_plan(c2r_z);
-    // fft_normalize_c2r(grad_x, N, boxlen);
-    // fft_normalize_c2r(grad_y, N, boxlen);
-    // fft_normalize_c2r(grad_z, N, boxlen);
-    // free(fgrad_x);
-    // free(fgrad_y);
-    // free(fgrad_z);
+    /* Compute the inverse Fourier transform of the gradient and Hessian */
+    double *grad_x = malloc(N*N*N*sizeof(double));
+    double *grad_y = malloc(N*N*N*sizeof(double));
+    double *grad_z = malloc(N*N*N*sizeof(double));
+    fftw_plan c2r_x = fftw_plan_dft_c2r_3d(N, N, N, fgrad_x, grad_x, FFTW_ESTIMATE);
+    fftw_plan c2r_y = fftw_plan_dft_c2r_3d(N, N, N, fgrad_y, grad_y, FFTW_ESTIMATE);
+    fftw_plan c2r_z = fftw_plan_dft_c2r_3d(N, N, N, fgrad_z, grad_z, FFTW_ESTIMATE);
+    fft_execute(c2r_x);
+    fft_execute(c2r_y);
+    fft_execute(c2r_z);
+    fftw_destroy_plan(c2r_x);
+    fftw_destroy_plan(c2r_y);
+    fftw_destroy_plan(c2r_z);
+    fft_normalize_c2r(grad_x, N, boxlen);
+    fft_normalize_c2r(grad_y, N, boxlen);
+    fft_normalize_c2r(grad_z, N, boxlen);
+    free(fgrad_x);
+    free(fgrad_y);
+    free(fgrad_z);
 
     /* Compute the inverse Fourier transform of the smoothed grid */
     fftw_plan c2r = fftw_plan_dft_c2r_3d(N, N, N, fbox, density, FFTW_ESTIMATE);
@@ -103,15 +103,14 @@ int main(int argc, char *argv[]) {
     for (int x=0; x<N; x++) {
         for (int y=0; y<N; y++) {
             for (int z=0; z<N; z++) {
-                // int xa = sgn(grad_x[row_major(x,y,z,N)]);
-                // int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
-                // int ya = sgn(grad_x[row_major(x,y,z,N)]);
-                // int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
-                // int za = sgn(grad_x[row_major(x,y,z,N)]);
-                // int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
+                int xa = sgn(grad_x[row_major(x,y,z,N)]);
+                int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
+                int ya = sgn(grad_x[row_major(x,y,z,N)]);
+                int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
+                int za = sgn(grad_x[row_major(x,y,z,N)]);
+                int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
 
-                // if (xa != xb && ya != yb && za != zb) {
-                if (true) {
+                if (xa != xb && ya != yb && za != zb) {
                     double val = density[row_major(x,y,z,N)];
                     if (val <= pars.MaximumPointDensity &&
                         val < density[row_major(x+1,y,z,N)] &&
@@ -137,15 +136,14 @@ int main(int argc, char *argv[]) {
     for (int x=0; x<N; x++) {
         for (int y=0; y<N; y++) {
             for (int z=0; z<N; z++) {
-                // int xa = sgn(grad_x[row_major(x,y,z,N)]);
-                // int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
-                // int ya = sgn(grad_x[row_major(x,y,z,N)]);
-                // int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
-                // int za = sgn(grad_x[row_major(x,y,z,N)]);
-                // int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
+                int xa = sgn(grad_x[row_major(x,y,z,N)]);
+                int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
+                int ya = sgn(grad_x[row_major(x,y,z,N)]);
+                int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
+                int za = sgn(grad_x[row_major(x,y,z,N)]);
+                int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
 
-                // if (xa != xb && ya != yb && za != zb) {
-                if (true) {
+                if (xa != xb && ya != yb && za != zb) {
                     double val = density[row_major(x,y,z,N)];
                     if (val <= pars.MaximumPointDensity &&
                         val < density[row_major(x+1,y,z,N)] &&
@@ -167,9 +165,9 @@ int main(int argc, char *argv[]) {
     }
 
     /* We are done with the gradient field */
-    // free(grad_x);
-    // free(grad_y);
-    // free(grad_z);
+    free(grad_x);
+    free(grad_y);
+    free(grad_z);
 
     /* Sort the minima by value */
     qsort(minima, void_num, sizeof(struct minimum), compareByVal);
@@ -322,6 +320,7 @@ int main(int argc, char *argv[]) {
     free(minima);
     free(profile);
     free(density);
+    free(fbox);
 
     /* Clean up */
     cleanParams(&pars);
