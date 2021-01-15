@@ -63,32 +63,32 @@ int main(int argc, char *argv[]) {
     fft_apply_kernel(fbox, fbox, N, boxlen, kernel_gaussian, &R_smooth);
 
     /* Compute the gradient */
-    fftw_complex *fgrad_x = malloc(N*N*(N/2+1) * sizeof(fftw_complex));
-    fftw_complex *fgrad_y = malloc(N*N*(N/2+1) * sizeof(fftw_complex));
-    fftw_complex *fgrad_z = malloc(N*N*(N/2+1) * sizeof(fftw_complex));
-    fft_apply_kernel(fgrad_x, fbox, N, boxlen, kernel_dx, NULL);
-    fft_apply_kernel(fgrad_y, fbox, N, boxlen, kernel_dy, NULL);
-    fft_apply_kernel(fgrad_z, fbox, N, boxlen, kernel_dz, NULL);
-
-    /* Compute the inverse Fourier transform of the gradient and Hessian */
-    double *grad_x = malloc(N*N*N*sizeof(double));
-    double *grad_y = malloc(N*N*N*sizeof(double));
-    double *grad_z = malloc(N*N*N*sizeof(double));
-    fftw_plan c2r_x = fftw_plan_dft_c2r_3d(N, N, N, fgrad_x, grad_x, FFTW_ESTIMATE);
-    fftw_plan c2r_y = fftw_plan_dft_c2r_3d(N, N, N, fgrad_y, grad_y, FFTW_ESTIMATE);
-    fftw_plan c2r_z = fftw_plan_dft_c2r_3d(N, N, N, fgrad_z, grad_z, FFTW_ESTIMATE);
-    fft_execute(c2r_x);
-    fft_execute(c2r_y);
-    fft_execute(c2r_z);
-    fftw_destroy_plan(c2r_x);
-    fftw_destroy_plan(c2r_y);
-    fftw_destroy_plan(c2r_z);
-    fft_normalize_c2r(grad_x, N, boxlen);
-    fft_normalize_c2r(grad_y, N, boxlen);
-    fft_normalize_c2r(grad_z, N, boxlen);
-    free(fgrad_x);
-    free(fgrad_y);
-    free(fgrad_z);
+    // fftw_complex *fgrad_x = malloc(N*N*(N/2+1) * sizeof(fftw_complex));
+    // fftw_complex *fgrad_y = malloc(N*N*(N/2+1) * sizeof(fftw_complex));
+    // fftw_complex *fgrad_z = malloc(N*N*(N/2+1) * sizeof(fftw_complex));
+    // fft_apply_kernel(fgrad_x, fbox, N, boxlen, kernel_dx, NULL);
+    // fft_apply_kernel(fgrad_y, fbox, N, boxlen, kernel_dy, NULL);
+    // fft_apply_kernel(fgrad_z, fbox, N, boxlen, kernel_dz, NULL);
+    //
+    // /* Compute the inverse Fourier transform of the gradient and Hessian */
+    // double *grad_x = malloc(N*N*N*sizeof(double));
+    // double *grad_y = malloc(N*N*N*sizeof(double));
+    // double *grad_z = malloc(N*N*N*sizeof(double));
+    // fftw_plan c2r_x = fftw_plan_dft_c2r_3d(N, N, N, fgrad_x, grad_x, FFTW_ESTIMATE);
+    // fftw_plan c2r_y = fftw_plan_dft_c2r_3d(N, N, N, fgrad_y, grad_y, FFTW_ESTIMATE);
+    // fftw_plan c2r_z = fftw_plan_dft_c2r_3d(N, N, N, fgrad_z, grad_z, FFTW_ESTIMATE);
+    // fft_execute(c2r_x);
+    // fft_execute(c2r_y);
+    // fft_execute(c2r_z);
+    // fftw_destroy_plan(c2r_x);
+    // fftw_destroy_plan(c2r_y);
+    // fftw_destroy_plan(c2r_z);
+    // fft_normalize_c2r(grad_x, N, boxlen);
+    // fft_normalize_c2r(grad_y, N, boxlen);
+    // fft_normalize_c2r(grad_z, N, boxlen);
+    // free(fgrad_x);
+    // free(fgrad_y);
+    // free(fgrad_z);
 
     /* Compute the inverse Fourier transform of the smoothed grid */
     fftw_plan c2r = fftw_plan_dft_c2r_3d(N, N, N, fbox, density, FFTW_ESTIMATE);
@@ -103,14 +103,15 @@ int main(int argc, char *argv[]) {
     for (int x=0; x<N; x++) {
         for (int y=0; y<N; y++) {
             for (int z=0; z<N; z++) {
-                int xa = sgn(grad_x[row_major(x,y,z,N)]);
-                int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
-                int ya = sgn(grad_x[row_major(x,y,z,N)]);
-                int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
-                int za = sgn(grad_x[row_major(x,y,z,N)]);
-                int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
+                // int xa = sgn(grad_x[row_major(x,y,z,N)]);
+                // int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
+                // int ya = sgn(grad_x[row_major(x,y,z,N)]);
+                // int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
+                // int za = sgn(grad_x[row_major(x,y,z,N)]);
+                // int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
 
-                if (xa != xb && ya != yb && za != zb) {
+                // if (xa != xb && ya != yb && za != zb) {
+                if (true) {
                     double val = density[row_major(x,y,z,N)];
                     if (val <= pars.MaximumPointDensity &&
                         val < density[row_major(x+1,y,z,N)] &&
@@ -136,14 +137,15 @@ int main(int argc, char *argv[]) {
     for (int x=0; x<N; x++) {
         for (int y=0; y<N; y++) {
             for (int z=0; z<N; z++) {
-                int xa = sgn(grad_x[row_major(x,y,z,N)]);
-                int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
-                int ya = sgn(grad_x[row_major(x,y,z,N)]);
-                int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
-                int za = sgn(grad_x[row_major(x,y,z,N)]);
-                int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
+                // int xa = sgn(grad_x[row_major(x,y,z,N)]);
+                // int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
+                // int ya = sgn(grad_x[row_major(x,y,z,N)]);
+                // int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
+                // int za = sgn(grad_x[row_major(x,y,z,N)]);
+                // int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
 
-                if (xa != xb && ya != yb && za != zb) {
+                // if (xa != xb && ya != yb && za != zb) {
+                if (true) {
                     double val = density[row_major(x,y,z,N)];
                     if (val <= pars.MaximumPointDensity &&
                         val < density[row_major(x+1,y,z,N)] &&
@@ -165,9 +167,9 @@ int main(int argc, char *argv[]) {
     }
 
     /* We are done with the gradient field */
-    free(grad_x);
-    free(grad_y);
-    free(grad_z);
+    // free(grad_x);
+    // free(grad_y);
+    // free(grad_z);
 
     /* Sort the minima by value */
     qsort(minima, void_num, sizeof(struct minimum), compareByVal);
@@ -252,6 +254,22 @@ int main(int argc, char *argv[]) {
     /* Sort the minima by void radius */
     qsort(minima, void_num, sizeof(struct minimum), compareByRadius);
 
+
+    printf("\n\nHistogram\n");
+
+    /* Compute a void size histogram */
+    int *histogram = calloc(Rmax+1, sizeof(int));
+    for (int i=0; i<void_num; i++) {
+        int R = minima[i].R;
+        histogram[R]++;
+    }
+
+    for (int r=0; r<Rmax+1; r++) {
+        printf("%d %d\n", r, histogram[r]);
+    }
+
+
+
     /* Compute average profile */
     int bin_R_min = (int) (pars.MinRadius * N / boxlen);
     int bin_R_max = (int) (pars.MaxRadius * N / boxlen + 1);
@@ -269,7 +287,7 @@ int main(int argc, char *argv[]) {
     /* Reload the original density field */
     readFieldFile(&density, &N, &boxlen, pars.InputFilename);
 
-    for (int i=0; i<void_num; i++) {
+    for (int i=0; i<10; i++) {
         struct minimum *m = &minima[i];
         int R = m->R;
         if (R <= bin_R_min || R >= bin_R_max) continue;
@@ -300,20 +318,6 @@ int main(int argc, char *argv[]) {
     for (int r=0; r<profile_size; r++) {
         printf("%d %f\n", r, profile[r]);
     }
-
-    printf("\n\nHistogram\n");
-
-    /* Compute a void size histogram */
-    int *histogram = calloc(Rmax+1, sizeof(int));
-    for (int i=0; i<void_num; i++) {
-        int R = minima[i].R;
-        histogram[R]++;
-    }
-
-    for (int r=0; r<Rmax+1; r++) {
-        printf("%d %d\n", r, histogram[r]);
-    }
-
 
     /* Colour the density grid */
     for (int i=0; i<void_num; i++) {
