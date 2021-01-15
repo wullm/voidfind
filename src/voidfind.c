@@ -266,6 +266,9 @@ int main(int argc, char *argv[]) {
     int voids_counted = 0;
     double *profile = calloc(profile_size, sizeof(double));
 
+    /* Reload the original density field */
+    readFieldFile(&density, &N, &boxlen, pars.InputFilename);
+
     for (int i=0; i<void_num; i++) {
         struct minimum *m = &minima[i];
         int R = m->R;
@@ -298,6 +301,20 @@ int main(int argc, char *argv[]) {
         printf("%d %f\n", r, profile[r]);
     }
 
+    printf("\n\nHistogram\n");
+
+    /* Compute a void size histogram */
+    int *histogram = calloc(Rmax+1, sizeof(int));
+    for (int i=0; i<void_num; i++) {
+        int R = minima[i].R;
+        histogram[R]++;
+    }
+
+    for (int r=0; r<Rmax+1; r++) {
+        printf("%d %d\n", r, histogram[r]);
+    }
+
+
     /* Colour the density grid */
     for (int i=0; i<void_num; i++) {
         struct minimum *m = &minima[i];
@@ -320,7 +337,7 @@ int main(int argc, char *argv[]) {
     free(minima);
     free(profile);
     free(density);
-    free(fbox);
+    free(histogram);
 
     /* Clean up */
     cleanParams(&pars);
