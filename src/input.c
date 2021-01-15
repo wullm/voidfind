@@ -34,10 +34,14 @@ int readParams(struct params *pars, const char *fname) {
      pars->MaxRadius = ini_getd("AverageProfile", "MaxRadius", -1, fname);
      pars->ProfileMaxRadius = ini_getd("AverageProfile", "ProfileMaxRadius", 50, fname);
 
+     pars->SecondaryFactor = ini_getd("Read", "SecondaryFactor", 1.0, fname);
+
      /* Read strings */
      int len = DEFAULT_STRING_LENGTH;
      pars->InputFilename = malloc(len);
+     pars->SecondaryInputFilename = malloc(len);
      ini_gets("Read", "Filename", "", pars->InputFilename, len, fname);
+     ini_gets("Read", "SecondaryFilename", "", pars->SecondaryInputFilename, len, fname);
 
      return 0;
 }
@@ -70,6 +74,7 @@ int readUnits(struct units *us, const char *fname) {
 
 int cleanParams(struct params *pars) {
     free(pars->InputFilename);
+    free(pars->SecondaryInputFilename);
 
     return 0;
 }

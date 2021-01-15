@@ -37,6 +37,9 @@
 struct params {
     /* Input parameters */
     char *InputFilename;
+    char *SecondaryInputFilename;
+    double SecondaryFactor;
+
     double SmoothingRadius;
     double ExclusionRadius;
     double MaximumPointDensity;
