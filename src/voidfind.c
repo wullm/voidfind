@@ -51,6 +51,24 @@ int main(int argc, char *argv[]) {
     int N;
     readFieldFile(&density, &N, &boxlen, pars.InputFilename);
 
+    /* Read the secondary density file */
+    double *density2;
+    int N2 = 0;
+    if (strcmp(pars.SecondaryInputFilename, "") != 0) {
+        double boxlen2;
+        readFieldFile(&density2, &N2, &boxlen2, pars.SecondaryInputFilename);
+
+        assert(N == N2);
+        assert(boxlen == boxlen2);
+
+        /* Add the secondary density to the primary density */
+        double fac = pars.SecondaryFactor;
+        printf("Factor for the secondary input is %f\n", fac);
+        for (int i=0; i<N*N*N; i++) {
+            density[i] = (density[i] + density2[i] * fac) / (1.0 + fac);
+        }
+    }
+
     /* Compute the Fourier transform */
     fftw_complex *fbox = malloc(N*N*(N/2+1) * sizeof(fftw_complex));
     fftw_plan r2c = fftw_plan_dft_r2c_3d(N, N, N, density, fbox, FFTW_ESTIMATE);
@@ -283,6 +301,7 @@ int main(int argc, char *argv[]) {
     /* Start computing the average profile */
     int voids_counted = 0;
     double *profile = calloc(profile_size, sizeof(double));
+    double *profile2 = calloc(profile_size, sizeof(double));
 
     /* Reload the original density field */
     readFieldFile(&density, &N, &boxlen, pars.InputFilename);
@@ -293,18 +312,20 @@ int main(int argc, char *argv[]) {
         if (R <= bin_R_min || R >= bin_R_max) continue;
 
         for (int r=0; r<profile_size; r++) {
-            double sum = 0;
+            double sum = 0, sum2 = 0;
             int count = 0;
             for (int x=-r; x<r+1; x++) {
                 for (int y=-r; y<r+1; y++) {
                     for (int z=-r; z<r+1; z++) {
                         if (x*x + y*y + z*z > r*r) continue;
                         sum += density[row_major(m->x + x, m->y + y, m->z + z, N)];
+                        if (N2 > 0) sum2 += density2[row_major(m->x + x, m->y + y, m->z + z, N)];
                         count++;
                     }
                 }
             }
             profile[r] += sum/count;
+            profile2[r] += sum2/count;
         }
         voids_counted++;
     }
@@ -316,7 +337,7 @@ int main(int argc, char *argv[]) {
     }
 
     for (int r=0; r<profile_size; r++) {
-        printf("%d %f\n", r, profile[r]);
+        printf("%d %f %f\n", r, profile[r], profile2[r]);
     }
 
     /* Colour the density grid */
@@ -340,7 +361,9 @@ int main(int argc, char *argv[]) {
     /* Free arrays that are no longer needed */
     free(minima);
     free(profile);
+    free(profile2);
     free(density);
+    if (N2 > 0) free(density2);
     free(histogram);
 
     /* Clean up */
