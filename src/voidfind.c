@@ -76,6 +76,8 @@ int main(int argc, char *argv[]) {
     fftw_destroy_plan(r2c);
     fft_normalize_r2c(fbox, N, boxlen);
 
+    printf("Computed Fourier transform.\n");
+
     /* Smooth the grid */
     double R_smooth = pars.SmoothingRadius;
     fft_apply_kernel(fbox, fbox, N, boxlen, kernel_gaussian, &R_smooth);
@@ -115,9 +117,14 @@ int main(int argc, char *argv[]) {
     fft_normalize_c2r(density, N, boxlen);
     free(fbox);
 
+    printf("Computed inverse Fourier transform.\n");
+
     int void_num = 0;
 
+    char *is_minimum = calloc(N*N*N, sizeof(char));
+
     /* Find local minima that are below the point threshold */
+    #pragma omp parallel for reduction(+: void_num)
     for (int x=0; x<N; x++) {
         for (int y=0; y<N; y++) {
             for (int z=0; z<N; z++) {
@@ -129,23 +136,33 @@ int main(int argc, char *argv[]) {
                 // int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
 
                 // if (xa != xb && ya != yb && za != zb) {
-                if (true) {
-                    double val = density[row_major(x,y,z,N)];
-                    if (val <= pars.MaximumPointDensity &&
-                        val < density[row_major(x+1,y,z,N)] &&
-                        val < density[row_major(x-1,y,z,N)] &&
-                        val < density[row_major(x,y+1,z,N)] &&
-                        val < density[row_major(x,y-1,z,N)] &&
-                        val < density[row_major(x,y,z+1,N)] &&
-                        val < density[row_major(x,y,z-1,N)]) {
-                            void_num++;
+
+                double val = density[row_major(x,y,z,N)];
+                int local_minimum = 1;
+                int r = 1;
+                for (int i=-r; i<r+1; i++) {
+                    for (int j=-r; j<r+1; j++) {
+                        for (int k=-r; k<r+1; k++) {
+                            if (i==0 && j==0 && k==0) continue;
+                            if (val >= density[row_major(x+i,y+j,z+k,N)]) {
+                                local_minimum = 0;
+                                goto end_check;
+                            }
+                        }
                     }
+                }
+
+                end_check:
+
+                if (local_minimum) {
+                    is_minimum[row_major(x,y,z,N)] = 1;
+                    void_num++;
                 }
             }
         }
     }
 
-    printf("We found %d critical points.\n", void_num);
+    printf("We found %d local minima.\n", void_num);
 
     /* Make a sorted list of local minima */
     struct minimum *minima = malloc(void_num * sizeof(struct minimum));
@@ -155,34 +172,19 @@ int main(int argc, char *argv[]) {
     for (int x=0; x<N; x++) {
         for (int y=0; y<N; y++) {
             for (int z=0; z<N; z++) {
-                // int xa = sgn(grad_x[row_major(x,y,z,N)]);
-                // int xb = sgn(grad_x[row_major(x+1,y,z,N)]);
-                // int ya = sgn(grad_x[row_major(x,y,z,N)]);
-                // int yb = sgn(grad_x[row_major(x,y+1,z,N)]);
-                // int za = sgn(grad_x[row_major(x,y,z,N)]);
-                // int zb = sgn(grad_x[row_major(x,y,z+1,N)]);
-
-                // if (xa != xb && ya != yb && za != zb) {
-                if (true) {
-                    double val = density[row_major(x,y,z,N)];
-                    if (val <= pars.MaximumPointDensity &&
-                        val < density[row_major(x+1,y,z,N)] &&
-                        val < density[row_major(x-1,y,z,N)] &&
-                        val < density[row_major(x,y+1,z,N)] &&
-                        val < density[row_major(x,y-1,z,N)] &&
-                        val < density[row_major(x,y,z+1,N)] &&
-                        val < density[row_major(x,y,z-1,N)]) {
-
-                        minima[indx].val = val;
-                        minima[indx].y = y;
-                        minima[indx].x = x;
-                        minima[indx].z = z;
-                        indx++;
-                    }
+                if (is_minimum[row_major(x,y,z,N)]) {
+                    minima[indx].val = density[row_major(x,y,z,N)];
+                    minima[indx].y = y;
+                    minima[indx].x = x;
+                    minima[indx].z = z;
+                    indx++;
                 }
             }
         }
     }
+
+    /* We are done with the is_minimum field */
+    free(is_minimum);
 
     /* We are done with the gradient field */
     // free(grad_x);
@@ -217,6 +219,8 @@ int main(int argc, char *argv[]) {
     printf("Discarded %d voids that are too close to another.\n", discard);
 
     /* Find maximum radius of voids */
+    discard = 0;
+    #pragma omp parallel for reduction(+: discard)
     for (int i=0; i<void_num; i++) {
         int R = 0;
         double avg = minima[i].val;
@@ -238,6 +242,11 @@ int main(int argc, char *argv[]) {
         }
 
         minima[i].R = R - 1;
+
+        /* Discard voids with negative radius */
+        if (minima[i].R <= 0) {
+            discard++;
+        }
     }
 
     /* Sort the minima by void radius */
@@ -245,6 +254,12 @@ int main(int argc, char *argv[]) {
 
     /* The largest void in the sample */
     int Rmax = minima[0].R;
+
+    /* Resize to remove the discards */
+    minima = realloc(minima, (void_num - discard) * sizeof(struct minimum));
+    void_num -= discard;
+
+    printf("Discarded %d voids with zero or negative radius.\n", discard);
 
     /* Discard voids that are entirely inside other voids  */
     discard = 0;
@@ -272,14 +287,15 @@ int main(int argc, char *argv[]) {
     /* Sort the minima by void radius */
     qsort(minima, void_num, sizeof(struct minimum), compareByRadius);
 
-
     printf("\n\nHistogram\n");
 
     /* Compute a void size histogram */
     int *histogram = calloc(Rmax+1, sizeof(int));
     for (int i=0; i<void_num; i++) {
         int R = minima[i].R;
-        histogram[R]++;
+        if (R >= 0 && R <= Rmax) {
+            histogram[R]++;
+        }
     }
 
     for (int r=0; r<Rmax+1; r++) {
@@ -287,6 +303,7 @@ int main(int argc, char *argv[]) {
     }
 
 
+    printf("\n\nAverage profile\n");
 
     /* Compute average profile */
     int bin_R_min = (int) (pars.MinRadius * N / boxlen);
@@ -304,6 +321,7 @@ int main(int argc, char *argv[]) {
     double *profile2 = calloc(profile_size, sizeof(double));
 
     /* Reload the original density field */
+    free(density);
     readFieldFile(&density, &N, &boxlen, pars.InputFilename);
 
     for (int i=0; i<10; i++) {
@@ -311,6 +329,7 @@ int main(int argc, char *argv[]) {
         int R = m->R;
         if (R <= bin_R_min || R >= bin_R_max) continue;
 
+        #pragma omp parallel for
         for (int r=0; r<profile_size; r++) {
             double sum = 0, sum2 = 0;
             int count = 0;
@@ -334,29 +353,30 @@ int main(int argc, char *argv[]) {
 
     for (int r=0; r<profile_size; r++) {
         profile[r] /= voids_counted;
+        profile2[r] /= voids_counted;
     }
 
     for (int r=0; r<profile_size; r++) {
         printf("%d %f %f\n", r, profile[r], profile2[r]);
     }
 
-    /* Colour the density grid */
-    for (int i=0; i<void_num; i++) {
-        struct minimum *m = &minima[i];
-        int R = m->R;
-
-        for (int x=-R; x<R+1; x++) {
-            for (int y=-R; y<R+1; y++) {
-                for (int z=-R; z<R+1; z++) {
-                    if (x*x + y*y + z*z > R*R) continue;
-                    density[row_major(m->x + x, m->y + y, m->z + z, N)] = -1;
-                }
-            }
-        }
-    }
-
-    /* Export the coloured grid */
-    writeFieldFile(density, N, boxlen, "out.hdf5");
+    // /* Colour the density grid */
+    // for (int i=0; i<void_num; i++) {
+    //     struct minimum *m = &minima[i];
+    //     int R = m->R;
+    //
+    //     for (int x=-R; x<R+1; x++) {
+    //         for (int y=-R; y<R+1; y++) {
+    //             for (int z=-R; z<R+1; z++) {
+    //                 if (x*x + y*y + z*z > R*R) continue;
+    //                 density[row_major(m->x + x, m->y + y, m->z + z, N)] = -1;
+    //             }
+    //         }
+    //     }
+    // }
+    //
+    // /* Export the coloured grid */
+    // writeFieldFile(density, N, boxlen, "out.hdf5");
 
     /* Free arrays that are no longer needed */
     free(minima);
